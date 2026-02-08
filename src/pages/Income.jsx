@@ -37,9 +37,43 @@ export default function Income() {
         }
     };
 
+    // --- Stats Calculations ---
     const totalIncome = incomes.reduce((sum, item) => sum + item.amount, 0);
     const highestIncome = incomes.length > 0 ? Math.max(...incomes.map(i => i.amount)) : 0;
     const recentIncome = incomes.length > 0 ? incomes[0].amount : 0;
+
+    // 🔥 RESTORED: handleAdd and handleEdit
+    const handleAdd = async (formData) => {
+        try {
+            await incomeService.add(formData);
+            fetchIncomes();
+            setIsFormOpen(false);
+        } catch (error) {
+            console.error("Failed to add income", error);
+        }
+    };
+
+    const handleEdit = async (formData) => {
+        try {
+            await incomeService.update(editingIncome.id, formData);
+            fetchIncomes();
+            setIsFormOpen(false);
+            setEditingIncome(null);
+        } catch (error) {
+            console.error("Failed to update income", error);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Delete this entry from the bag?')) {
+            try {
+                await incomeService.delete(id);
+                fetchIncomes();
+            } catch (error) {
+                console.error("Failed to delete income", error);
+            }
+        }
+    };
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-US', { 
@@ -60,7 +94,7 @@ export default function Income() {
         <Layout>
             <div className="space-y-6 md:space-y-10 pb-24">
                 
-                {/* ✨ Responsive Header & Stats */}
+                {/* ✨ Responsive Header */}
                 <div className="flex flex-col gap-6 md:gap-8">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
                         <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
@@ -75,33 +109,33 @@ export default function Income() {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => { setEditingIncome(null); setIsFormOpen(true); }}
-                            className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-4 rounded-2xl font-black flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
+                            className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-4 rounded-2xl font-black flex justify-center items-center gap-2 shadow-lg transition-all"
                         >
                             <Plus className="w-5 h-5" /> ADD TO BAG
                         </motion.button>
                     </div>
 
-                    {/* Bento Stats Grid - Now Responsive */}
+                    {/* Bento Stats Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                        <motion.div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] text-white shadow-xl relative overflow-hidden">
+                        <motion.div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 md:p-8 rounded-[2rem] text-white shadow-xl relative overflow-hidden">
                             <TrendingUp className="absolute -right-4 -bottom-4 h-20 w-20 opacity-20 rotate-12" />
                             <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-80 mb-1">Total Revenue</p>
                             <h2 className="text-3xl md:text-4xl font-black">{formatCurrency(totalIncome)}</h2>
                         </motion.div>
 
-                        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-white/5 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-sm">
+                        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-white/5 p-6 md:p-8 rounded-[2rem] shadow-sm">
                             <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Biggest Hit</p>
                             <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white">{formatCurrency(highestIncome)}</h2>
                         </div>
 
-                        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-white/5 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-sm sm:col-span-2 md:col-span-1">
+                        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-white/5 p-6 md:p-8 rounded-[2rem] shadow-sm sm:col-span-2 md:col-span-1">
                             <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Latest Drop</p>
                             <h2 className="text-2xl md:text-3xl font-black text-emerald-500">{formatCurrency(recentIncome)}</h2>
                         </div>
                     </div>
                 </div>
 
-                {/* 🔍 Search & Filters - Stacks on Mobile */}
+                {/* 🔍 Search & Filters */}
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="relative flex-1">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -123,14 +157,10 @@ export default function Income() {
                     </select>
                 </div>
 
-                {/* 📝 Income Table/List with Overflow protection */}
-                <div className="bg-white dark:bg-gray-900 rounded-[2rem] md:rounded-[2.5rem] border border-gray-100 dark:border-white/5 overflow-hidden shadow-sm">
+                {/* 📝 Income Table with Overflow protection */}
+                <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-white/5 overflow-hidden shadow-sm">
                     {loading ? (
                         <div className="p-20 text-center font-bold text-gray-400 animate-pulse">SYNCING_THE_BAG...</div>
-                    ) : filteredIncomes.length === 0 ? (
-                        <div className="p-20 text-center">
-                            <h3 className="text-xl font-bold dark:text-white uppercase mb-2">No Bag Detected</h3>
-                        </div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-left min-w-[600px]">
